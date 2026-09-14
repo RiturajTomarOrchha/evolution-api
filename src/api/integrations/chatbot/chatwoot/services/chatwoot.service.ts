@@ -435,42 +435,42 @@ export class ChatwootService {
       return null;
     }
 
-    // Direct search by query (q) - most common way to search by identifier/email/phone
-    const contact = (await (client as any).get('contacts/search', {
-      params: {
+    try {
+      const contact = await client.contacts.search({
+        accountId: this.provider.accountId,
         q: identifier,
-        sort: 'name',
-      },
-    })) as any;
+      });
 
-    if (contact && contact.data && contact.data.payload && contact.data.payload.length > 0) {
-      return contact.data.payload[0];
+      const payload = contact?.payload || (contact as any)?.data?.payload;
+      if (Array.isArray(payload) && payload.length > 0) {
+        return payload.find((item) => item.identifier === identifier) || payload[0];
+      }
+    } catch (error) {
+      this.logger.warn(`Contact search by identifier failed for ${identifier}: ${error}`);
     }
 
-    // Fallback for older API versions or different response structures
-    if (contact && contact.payload && contact.payload.length > 0) {
-      return contact.payload[0];
-    }
-
-    // Try search by attribute
-    const contactByAttr = (await (client as any).post('contacts/filter', {
-      payload: [
-        {
-          attribute_key: 'identifier',
-          filter_operator: 'equal_to',
-          values: [identifier],
-          query_operator: null,
+    try {
+      const contactByAttr = await chatwootRequest(this.getClientCwConfig(), {
+        method: 'POST',
+        url: `/api/v1/accounts/${this.provider.accountId}/contacts/filter`,
+        body: {
+          payload: [
+            {
+              attribute_key: 'identifier',
+              filter_operator: 'equal_to',
+              values: [identifier],
+              query_operator: null,
+            },
+          ],
         },
-      ],
-    })) as any;
+      });
 
-    if (contactByAttr && contactByAttr.payload && contactByAttr.payload.length > 0) {
-      return contactByAttr.payload[0];
-    }
-
-    // Check inside data property if using axios interceptors wrapper
-    if (contactByAttr && contactByAttr.data && contactByAttr.data.payload && contactByAttr.data.payload.length > 0) {
-      return contactByAttr.data.payload[0];
+      const payload = (contactByAttr as any)?.payload || (contactByAttr as any)?.data?.payload;
+      if (Array.isArray(payload) && payload.length > 0) {
+        return payload[0];
+      }
+    } catch (error) {
+      this.logger.warn(`Contact filter by identifier failed for ${identifier}: ${error}`);
     }
 
     return null;
@@ -784,9 +784,14 @@ export class ChatwootService {
 
         this.logger.verbose(`Searching contact for: ${chatId}`);
         const isLidFallback = isLid && !isGroup && !body.key.remoteJidAlt;
-        let contact = isLidFallback
-          ? await this.findContactByIdentifier(instance, remoteJid)
-          : await this.findContact(instance, chatId);
+        let contact = null;
+        try {
+          contact = isLidFallback
+            ? await this.findContactByIdentifier(instance, remoteJid)
+            : await this.findContact(instance, chatId);
+        } catch (error) {
+          this.logger.warn(`Failed to search contact for ${remoteJid}: ${error}`);
+        }
 
         if (contact) {
           this.logger.verbose(`Found contact: ID:${contact.id} - Name:${contact.name}`);
