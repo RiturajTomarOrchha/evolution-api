@@ -356,7 +356,8 @@ export DATABASE_PROVIDER=postgresql  # or mysql
 ## Custom Copilot Agent Workflow
 
 The repository-specific guidance above remains authoritative for every custom agent. The agents below divide work by
-phase without replacing or weakening existing project instructions.
+phase without replacing or weakening existing project instructions. Start the complete workflow with Sol once; Sol
+coordinates the remaining phases without requiring the user to repeat context.
 
 ### Shared Principles
 
@@ -368,9 +369,10 @@ phase without replacing or weakening existing project instructions.
 
 ### Responsibilities and Limits
 
-- **Sol (planner)** investigates with read-only operations, defines scope and acceptance criteria, identifies affected
-  surfaces and risks, and produces an ordered implementation and validation plan. Sol must not alter repository files,
-  dependencies, Git state, or external systems.
+- **Sol (planner and coordinator)** investigates with read-only operations, defines scope and acceptance criteria,
+  identifies affected surfaces and risks, produces an ordered implementation and validation plan, and coordinates Terra
+  and Luna as custom-agent subagents. Sol must not alter repository files, dependencies, Git state, or external systems
+  directly; delegation to Terra does not violate this boundary.
 - **Terra (implementer)** starts from Sol's accepted plan, verifies assumptions against the current tree, implements the
   complete change, updates directly related documentation, and runs the smallest sufficient validation. Terra may adapt
   the plan when repository evidence requires it, but must document material deviations and must not approve its own work.
@@ -380,15 +382,25 @@ phase without replacing or weakening existing project instructions.
 
 ### Flow and Handoff Criteria
 
-1. **Sol -> Terra:** hand off only when the plan states the goal, in-scope and out-of-scope work, relevant files or
-   components, implementation steps, risks and edge cases, validation commands, and measurable acceptance criteria.
-2. **Terra -> Luna:** hand off only when implementation and related documentation are complete, the diff is focused,
-   validation results are recorded, and any deviations, residual risks, or blocked checks are identified.
-3. **Luna -> completion:** issue `APPROVE` only when acceptance criteria are met with no blocking findings; issue
-   `REQUEST CHANGES` when actionable defects remain; issue `BLOCKED` when missing access, evidence, or requirements
-   prevent a reliable decision.
-4. After `REQUEST CHANGES`, Terra addresses the findings and returns the updated diff and validation evidence to Luna.
-   Repeat until Luna returns `APPROVE` or a genuine blocker is documented.
+1. **Sol plans:** investigate the request and repository, then define the goal, in-scope and out-of-scope work, relevant
+   files or components, implementation steps, risks and edge cases, validation commands, and measurable acceptance
+   criteria.
+2. **Sol -> Terra:** invoke Terra as a custom-agent subagent with the original request and complete plan. Terra implements
+   the change and returns only after related documentation is complete, the diff is focused, validation results are
+   recorded, and any deviations, residual risks, or blocked checks are identified.
+3. **Sol -> Luna:** invoke Luna as a new custom-agent subagent with the original request, Sol's plan, and Terra's handoff.
+   Luna independently inspects the diff and evidence, then issues `APPROVE`, `REQUEST CHANGES`, or `BLOCKED`.
+4. **Correction cycle:** after `REQUEST CHANGES`, Sol sends every actionable finding back to Terra, waits for the fixes
+   and updated evidence, then invokes Luna for a fresh independent review. Sol must not implement fixes or review them.
+5. **Termination:** finish when Luna returns `APPROVE` or `BLOCKED`. To prevent an unlimited loop, stop after three
+   Terra -> Luna correction cycles and report `BLOCKED` with the unresolved findings and decision required from the user.
+
+Terra and Luna remain directly invocable for isolated work, but Sol is the standard entry point for the complete flow.
+Sol must use the custom-agent or subagent capability available on the current Copilot surface and must never simulate
+Terra's implementation or Luna's review. If the surface cannot invoke subagents, Sol provides two ready-to-run manual
+prompts: one for Terra containing the original request and complete plan, and one for Luna containing the original
+request, plan, and the Terra handoff fields that must be filled after implementation. Sol then explains the manual
+execution order and the same correction-cycle limit.
 
 ### Conflict Resolution
 
