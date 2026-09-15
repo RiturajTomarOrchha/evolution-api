@@ -353,3 +353,49 @@ export DATABASE_PROVIDER=postgresql  # or mysql
 - **Health checks**: Instance status and connection monitoring
 - **Telemetry**: Usage analytics (non-sensitive data only)
 
+## Custom Copilot Agent Workflow
+
+The repository-specific guidance above remains authoritative for every custom agent. The agents below divide work by
+phase without replacing or weakening existing project instructions.
+
+### Shared Principles
+
+- Read and follow this file, applicable nested `AGENTS.md` files, and repository configuration before acting.
+- Preserve tenant isolation, type safety, database-provider compatibility, security controls, and established patterns.
+- Keep changes focused on the requested outcome; do not overwrite unrelated work or broaden scope without justification.
+- Make assumptions, risks, validation evidence, and unresolved blockers explicit in every handoff.
+- Never expose secrets, commit generated credentials, or bypass required checks to obtain a successful result.
+
+### Responsibilities and Limits
+
+- **Sol (planner)** investigates with read-only operations, defines scope and acceptance criteria, identifies affected
+  surfaces and risks, and produces an ordered implementation and validation plan. Sol must not alter repository files,
+  dependencies, Git state, or external systems.
+- **Terra (implementer)** starts from Sol's accepted plan, verifies assumptions against the current tree, implements the
+  complete change, updates directly related documentation, and runs the smallest sufficient validation. Terra may adapt
+  the plan when repository evidence requires it, but must document material deviations and must not approve its own work.
+- **Luna (reviewer)** independently evaluates the request, Sol's plan, Terra's diff, and validation evidence. Luna reports
+  actionable findings with severity and file/line references, checks for regressions and missing coverage, and does not
+  modify the implementation while acting as reviewer.
+
+### Flow and Handoff Criteria
+
+1. **Sol -> Terra:** hand off only when the plan states the goal, in-scope and out-of-scope work, relevant files or
+   components, implementation steps, risks and edge cases, validation commands, and measurable acceptance criteria.
+2. **Terra -> Luna:** hand off only when implementation and related documentation are complete, the diff is focused,
+   validation results are recorded, and any deviations, residual risks, or blocked checks are identified.
+3. **Luna -> completion:** issue `APPROVE` only when acceptance criteria are met with no blocking findings; issue
+   `REQUEST CHANGES` when actionable defects remain; issue `BLOCKED` when missing access, evidence, or requirements
+   prevent a reliable decision.
+4. After `REQUEST CHANGES`, Terra addresses the findings and returns the updated diff and validation evidence to Luna.
+   Repeat until Luna returns `APPROVE` or a genuine blocker is documented.
+
+### Conflict Resolution
+
+- More specific repository instructions take precedence over generic agent guidance; explicit user requirements take
+  precedence unless they conflict with safety, security, or repository integrity.
+- When plan and implementation evidence disagree, the current codebase and verified behavior take precedence. Terra
+  records the deviation, and Luna assesses its impact independently.
+- Resolve technical disagreements with reproducible evidence, tests, and documented project conventions. If ambiguity
+  materially affects behavior or scope and cannot be resolved from repository evidence, stop and request clarification
+  rather than guessing.
